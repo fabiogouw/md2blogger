@@ -6,6 +6,7 @@ import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import fs from 'fs';
 import os from 'os';
+import axios from 'axios';
 
 const configureRouter = function (onClose) {
     let router = express.Router();
@@ -48,7 +49,7 @@ const readAuthenticationFromLocalConfig = function () {
     return new Promise((resolve) => {
         let configFolder = os.homedir() + "/.md2blogger";
         let authFile = configFolder + "/auth";
-        if(fs.existsSync(authFile)) {
+        if (fs.existsSync(authFile)) {
             let authResult = JSON.parse(fs.readFileSync(authFile));
             resolve(authResult);
         }
@@ -57,6 +58,38 @@ const readAuthenticationFromLocalConfig = function () {
             RefreshToken: null
         });
     });
+}
+
+const validateToken = async function (authResult) {
+    console.log("validating access token...");
+    try {
+        let response = axios.get("https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=" + authResult.AccessToken);
+        return response.status === 200;
+    } catch (error) {
+        console.error(error);
+        return false;
+    }
+}
+
+const askForTokenRefresh = async function (refreshToken) {
+    console.log("refreshing access token...");
+    try {
+        let response = await axios.post("https://oauth2.googleapis.com/token", {
+            grant_type: "refresh_token",
+            client_id: "62634882478-vvqopahdpp96pqvog717ls1ue2oh79eo.apps.googleusercontent.com",
+            client_secret: "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",
+            refresh_token: refreshToken
+        });
+        return {
+            AccessToken: response.data.access_token,
+            RefreshToken: refreshToken
+        };
+    } catch (error) {
+        return {
+            AccessToken: null,
+            RefreshToken: null
+        }
+    }
 }
 
 const saveAuthenticationToLocalConfig = function (authResult) {
@@ -68,7 +101,6 @@ const saveAuthenticationToLocalConfig = function (authResult) {
 }
 
 const askForBrowserAuthentication = function () {
-
     return new Promise((resolve) => {
 
         let authResult = {
@@ -109,17 +141,17 @@ const askForBrowserAuthentication = function () {
     });
 }
 
-const authentication = function () {
-    return readAuthenticationFromLocalConfig()
-        .then((authResult) => {
-            if(authResult.AccessToken) {
-                return Promise.resolve(authResult);
-            }
-            else {
-                return askForBrowserAuthentication()
-                    .then(saveAuthenticationToLocalConfig);
-            }
-        });
+const authentication = async function () {
+    let authResult = await readAuthenticationFromLocalConfig();
+    if (authResult && await validateToken(authResult)) {
+        return Promise.resolve(authResult);
+    }
+    authResult = await askForTokenRefresh(authResult.RefreshToken);
+    if(authResult.AccessToken) {
+        return Promise.resolve(authResult);
+    }
+    return askForBrowserAuthentication()
+        .then(saveAuthenticationToLocalConfig);
 }
 
 export default authentication;
