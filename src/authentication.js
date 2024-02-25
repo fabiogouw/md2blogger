@@ -1,17 +1,18 @@
 import open from 'open';
 import express from 'express';
-import session from 'express-session';
 import { createHttpTerminator } from 'http-terminator';
 
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
+import fs from 'fs';
+import os from 'os';
 
-const configureRouter = function(onClose) {
+const configureRouter = function (onClose) {
     let router = express.Router();
 
     router.get('/auth/google', passport.authenticate('google', { scope: ['email'] }));
 
-    router.get('/auth/google/callback', passport.authenticate('google', { failureRedirect: '/failure', failureMessage: true }), (req, res) => {
+    router.get('/auth/google/callback', passport.authenticate('google', { session: false, failureRedirect: '/failure', failureMessage: true }), (req, res) => {
         res.redirect('/success');
     });
 
@@ -21,11 +22,49 @@ const configureRouter = function(onClose) {
     })
 
     router.get('/success', (req, res) => {
-        console.log("sucess")
         res.send('<h1>Authentication completed! You can now close this window.</h1>')
         onClose();
     })
     return router;
+}
+
+const configureGoogleAuth = function (resolve) {
+    passport.use(
+        new GoogleStrategy(
+            {
+                clientID: '62634882478-vvqopahdpp96pqvog717ls1ue2oh79eo.apps.googleusercontent.com',
+                clientSecret: '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',
+                callbackURL: '/auth/google/callback'
+            },
+            (accessToken, refreshToken, profile, done) => {
+                resolve(accessToken, refreshToken);
+                return done(null, profile);
+            }
+        )
+    );
+}
+
+const readAuthenticationFromLocalConfig = function () {
+    return new Promise((resolve) => {
+        let configFolder = os.homedir() + "/.md2blogger";
+        let authFile = configFolder + "/auth";
+        if(fs.existsSync(authFile)) {
+            let authResult = JSON.parse(fs.readFileSync(authFile));
+            resolve(authResult);
+        }
+        resolve({
+            AccessToken: null,
+            RefreshToken: null
+        });
+    });
+}
+
+const saveAuthenticationToLocalConfig = function (authResult) {
+    let configFolder = os.homedir() + "/.md2blogger"
+    if (!fs.existsSync(configFolder)) {
+        fs.mkdirSync(configFolder);
+    }
+    fs.writeFileSync(configFolder + "/auth", JSON.stringify(authResult, null, 2), 'utf8');
 }
 
 const askForBrowserAuthentication = function () {
@@ -37,38 +76,21 @@ const askForBrowserAuthentication = function () {
             RefreshToken: null
         };
 
-        passport.use(
-            new GoogleStrategy(
-                {
-                    clientID: '62634882478-vvqopahdpp96pqvog717ls1ue2oh79eo.apps.googleusercontent.com',
-                    clientSecret: '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',
-                    callbackURL: '/auth/google/callback'
-                },
-                (accessToken, refreshToken, profile, done) => {
-                    authResult = {
-                        AccessToken: accessToken,
-                        RefreshToken: refreshToken
-                    };
-                    return done(null, profile);
-                }
-            )
-        );
+        let setResult = function (accessToken, refreshToken) {
+            authResult = {
+                AccessToken: accessToken,
+                RefreshToken: refreshToken
+            };
+            console.log(authResult);
+        }
 
-        passport.serializeUser((user, done) => {
-            done(null, user)
-        });
-
-        passport.deserializeUser((id, done) => {
-            done(null, id)
-        });
+        configureGoogleAuth(setResult);
 
         let app = express();
 
-        app.use(session({ secret: 'YOUR_SESSION_SECRET', resave: false, saveUninitialized: false }));
         app.use(passport.initialize());
 
         let server = app.listen(0, () => {
-            console.log("Server started on port " + server.address().port);
             let httpTerminator = createHttpTerminator({ server });
             setTimeout(() => {
                 if (server.listening) {
@@ -78,7 +100,6 @@ const askForBrowserAuthentication = function () {
                 }
             }, 15000);
             app.use('/', configureRouter(() => {
-                console.log("terminating ok...")
                 httpTerminator.terminate();
                 resolve(authResult);
             }));
@@ -89,7 +110,16 @@ const askForBrowserAuthentication = function () {
 }
 
 const authentication = function () {
-    return askForBrowserAuthentication();
+    return readAuthenticationFromLocalConfig()
+        .then((authResult) => {
+            if(authResult.AccessToken) {
+                return Promise.resolve(authResult);
+            }
+            else {
+                return askForBrowserAuthentication()
+                    .then(saveAuthenticationToLocalConfig);
+            }
+        });
 }
 
 export default authentication;
