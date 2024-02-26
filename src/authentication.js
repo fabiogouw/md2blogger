@@ -11,7 +11,7 @@ import axios from 'axios';
 const configureRouter = function (onClose) {
     let router = express.Router();
 
-    router.get('/auth/google', passport.authenticate('google', { scope: ['email'] }));
+    router.get('/auth/google', passport.authenticate('google', { scope: ['email', 'https://www.googleapis.com/auth/blogger'] }));
 
     router.get('/auth/google/callback', passport.authenticate('google', { session: false, failureRedirect: '/failure', failureMessage: true }), (req, res) => {
         res.redirect('/success');
@@ -63,10 +63,10 @@ const readAuthenticationFromLocalConfig = function () {
 const validateToken = async function (authResult) {
     console.log("validating access token...");
     try {
-        let response = axios.get("https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=" + authResult.AccessToken);
+        let response = await axios.get("https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=" + authResult.AccessToken);
         return response.status === 200;
     } catch (error) {
-        console.error(error);
+        console.error(error.response.data);
         return false;
     }
 }
@@ -93,11 +93,14 @@ const askForTokenRefresh = async function (refreshToken) {
 }
 
 const saveAuthenticationToLocalConfig = function (authResult) {
-    let configFolder = os.homedir() + "/.md2blogger"
-    if (!fs.existsSync(configFolder)) {
-        fs.mkdirSync(configFolder);
+    if (authResult.AccessToken && authResult.RefreshToken) {
+        let configFolder = os.homedir() + "/.md2blogger"
+        if (!fs.existsSync(configFolder)) {
+            fs.mkdirSync(configFolder);
+        }
+        fs.writeFileSync(configFolder + "/auth", JSON.stringify(authResult, null, 2), 'utf8');
     }
-    fs.writeFileSync(configFolder + "/auth", JSON.stringify(authResult, null, 2), 'utf8');
+    return authResult;
 }
 
 const askForBrowserAuthentication = function () {
@@ -130,7 +133,7 @@ const askForBrowserAuthentication = function () {
                     httpTerminator.terminate();
                     resolve(authResult);
                 }
-            }, 15000);
+            }, 25000);
             app.use('/', configureRouter(() => {
                 httpTerminator.terminate();
                 resolve(authResult);
@@ -143,11 +146,12 @@ const askForBrowserAuthentication = function () {
 
 const authentication = async function () {
     let authResult = await readAuthenticationFromLocalConfig();
-    if (authResult && await validateToken(authResult)) {
+    if (authResult.AccessToken && await validateToken(authResult)) {
         return Promise.resolve(authResult);
     }
-    authResult = await askForTokenRefresh(authResult.RefreshToken);
-    if(authResult.AccessToken) {
+    authResult = await askForTokenRefresh(authResult.RefreshToken)
+        .then(saveAuthenticationToLocalConfig);
+    if (authResult.AccessToken) {
         return Promise.resolve(authResult);
     }
     return askForBrowserAuthentication()
