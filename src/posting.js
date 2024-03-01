@@ -24,7 +24,7 @@ const findSimilarPostsByTitle = async function (blogId, title, authResult) {
 }
 
 const insertPost = async function (blogId, blogPost, authResult) {
-    let response = await axios.post(`https://blogger.googleapis.com/v3/blogs/${blogId}/posts?isDraft=false`, {
+    await axios.post(`https://blogger.googleapis.com/v3/blogs/${blogId}/posts?isDraft=false`, {
         kind: "blogger#post",
         content: blogPost.Content,
         title: blogPost.Title
@@ -37,7 +37,7 @@ const insertPost = async function (blogId, blogPost, authResult) {
 }
 
 const updatePostContent = async function (blogId, postId, blogPost, authResult) {
-    let response = await axios.patch(`https://blogger.googleapis.com/v3/blogs/${blogId}/posts/${postId}`, {
+    await axios.patch(`https://blogger.googleapis.com/v3/blogs/${blogId}/posts/${postId}`, {
         content: blogPost.Content,
     }, {
         headers: {

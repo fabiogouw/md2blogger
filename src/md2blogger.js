@@ -1,13 +1,9 @@
 import authentication from './authentication.js';
 import postToBlog from './posting.js';
-
-let conversion = Promise.resolve({
-    Content: "<h1>Test 32</h1>",
-    Title: "Super new Teste"
-});
+import conversion from './conversion.js'
 
 const md2blogger = async function(mdFile, blogUrl) {
-    let [blogPost, authResult] = await Promise.all([conversion, authentication()]);
+    let [blogPost, authResult] = await Promise.all([conversion(mdFile), authentication()]);
     await postToBlog(blogUrl, blogPost, authResult);
 }
 
