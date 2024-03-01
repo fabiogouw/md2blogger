@@ -1,20 +1,12 @@
 #!/usr/bin/env node
 
-import { program } from 'commander';
+import { program } from "commander";
 
-import md2blogger from './md2blogger.js';
-
-
-/*program
-    .command('add [todo]')
-    .description('Adiciona um to-do')
-    .action((todo) => {
-        console.log(todo);
-    });*/
+import md2blogger from "./md2blogger.js";
 
 program
-    .option('--md <mdFile>', 'The path of the markdown file to be converted and post.')
-    .option('--url <blogUrl>', 'The URL of the blog, like "https://myblog.blogspot.com".');
+    .requiredOption("--md <mdFile>", "The path of the markdown file to be converted and posted.")
+    .requiredOption("--url <blogUrl>", "The URL of the blog, ie 'https://myblog.blogspot.com'.");
 
 program.parse();
 

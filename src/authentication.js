@@ -1,29 +1,34 @@
-import open from 'open';
-import express from 'express';
-import { createHttpTerminator } from 'http-terminator';
+import open from "open";
+import express from "express";
+import { createHttpTerminator } from "http-terminator";
 
-import passport from 'passport';
-import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
-import fs from 'fs';
-import os from 'os';
-import axios from 'axios';
+import passport from "passport";
+import { Strategy as GoogleStrategy } from "passport-google-oauth20";
+import fs from "fs";
+import os from "os";
+import axios from "axios";
+
+const GoogleCredentials = {
+    CliendId: "62634882478-vvqopahdpp96pqvog717ls1ue2oh79eo.apps.googleusercontent.com",
+    ClientSecret: "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"
+}
 
 const configureRouter = function (onClose) {
     let router = express.Router();
 
-    router.get('/auth/google', passport.authenticate('google', { scope: ['email', 'https://www.googleapis.com/auth/blogger'] }));
+    router.get("/auth/google", passport.authenticate("google", { scope: ["email", "https://www.googleapis.com/auth/blogger"] }));
 
-    router.get('/auth/google/callback', passport.authenticate('google', { session: false, failureRedirect: '/failure', failureMessage: true }), (req, res) => {
-        res.redirect('/success');
+    router.get("/auth/google/callback", passport.authenticate("google", { session: false, failureRedirect: "/failure", failureMessage: true }), (req, res) => {
+        res.redirect("/success");
     });
 
-    router.get('/failure', (req, res) => {
-        res.send('<h1>Something went wrong. Please try again.</h1>')
+    router.get("/failure", (req, res) => {
+        res.send("<h1>Something went wrong. Please try again.</h1>");
         onClose();
     })
 
-    router.get('/success', (req, res) => {
-        res.send('<h1>Authentication completed! You can now close this window.</h1>')
+    router.get("/success", (req, res) => {
+        res.send("<h1>Authentication completed! You can now close this window.</h1>");
         onClose();
     })
     return router;
@@ -33,9 +38,9 @@ const configureGoogleAuth = function (resolve) {
     passport.use(
         new GoogleStrategy(
             {
-                clientID: '62634882478-vvqopahdpp96pqvog717ls1ue2oh79eo.apps.googleusercontent.com',
-                clientSecret: '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',
-                callbackURL: '/auth/google/callback'
+                clientID: GoogleCredentials.CliendId,
+                clientSecret: GoogleCredentials.ClientSecret,
+                callbackURL: "/auth/google/callback"
             },
             (accessToken, refreshToken, profile, done) => {
                 resolve(accessToken, refreshToken);
@@ -61,7 +66,6 @@ const readAuthenticationFromLocalConfig = function () {
 }
 
 const validateToken = async function (authResult) {
-    console.log("validating access token...");
     try {
         let response = await axios.get("https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=" + authResult.AccessToken);
         return response.status === 200;
@@ -72,12 +76,11 @@ const validateToken = async function (authResult) {
 }
 
 const askForTokenRefresh = async function (refreshToken) {
-    console.log("refreshing access token...");
     try {
         let response = await axios.post("https://oauth2.googleapis.com/token", {
             grant_type: "refresh_token",
-            client_id: "62634882478-vvqopahdpp96pqvog717ls1ue2oh79eo.apps.googleusercontent.com",
-            client_secret: "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",
+            client_id: GoogleCredentials.ClientID,
+            client_secret: GoogleCredentials.ClientSecret,
             refresh_token: refreshToken
         });
         return {
@@ -98,7 +101,7 @@ const saveAuthenticationToLocalConfig = function (authResult) {
         if (!fs.existsSync(configFolder)) {
             fs.mkdirSync(configFolder);
         }
-        fs.writeFileSync(configFolder + "/auth", JSON.stringify(authResult, null, 2), 'utf8');
+        fs.writeFileSync(configFolder + "/auth", JSON.stringify(authResult, null, 2), "utf8");
     }
     return authResult;
 }
@@ -116,7 +119,6 @@ const askForBrowserAuthentication = function () {
                 AccessToken: accessToken,
                 RefreshToken: refreshToken
             };
-            console.log(authResult);
         }
 
         configureGoogleAuth(setResult);
@@ -129,11 +131,11 @@ const askForBrowserAuthentication = function () {
             let httpTerminator = createHttpTerminator({ server });
             setTimeout(() => {
                 if (server.listening) {
-                    console.log("Ending process due timeout...");
+                    console.log("Terminating authentication process due timeout...");
                     httpTerminator.terminate();
                     resolve(authResult);
                 }
-            }, 25000);
+            }, 30000);
             app.use('/', configureRouter(() => {
                 httpTerminator.terminate();
                 resolve(authResult);

@@ -1,11 +1,14 @@
-import markdownit from 'markdown-it';
-import markdownitContainer from 'markdown-it-container';
-import fs from 'fs';
+import markdownit from "markdown-it";
+import markdownitContainer from "markdown-it-container";
+import fs from "fs";
+import yaml from "js-yaml";
 
 const metadataExtractor = /(---\n)(.+?)(---\n)/s;
-const metadataTitleExtractor = /(title: )(.+?)(\n)/s;
 
 const conversion = function (mdFile) {
+    if(!fs.existsSync(mdFile)) {
+        return Promise.reject(new Error(`File '${mdFile}' not found.`));
+    }
     let md = markdownit()
         .use(markdownitContainer, 'note', {
 
@@ -30,13 +33,14 @@ const conversion = function (mdFile) {
     const mdContent = fs.readFileSync(mdFile, 'utf8');
     let metadataMatch = metadataExtractor.exec(mdContent);
     if(metadataMatch && metadataMatch.length === 4) {
-        let metadata = metadataMatch[2]
-        let titleMatch = metadataTitleExtractor.exec(metadata);
-        if(titleMatch && titleMatch.length === 4) {
+        let metadata = yaml.load(metadataMatch[2], "utf8")
+        if(metadata.title) {
             let content = mdContent.replace(metadataMatch[0], "")
             return Promise.resolve({
-                Title: titleMatch[2],
-                Content: md.render(content)
+                Title: metadata.title,
+                Content: md.render(content),
+                Tags: metadata.tags ?? [],
+                Date: metadata.date
             });
         }
         return Promise.reject(new Error("No title blog provided in metadata."));

@@ -1,12 +1,19 @@
-import axios from 'axios';
+import axios from "axios";
 
 const getBlogId = async function (blogUrl, authResult) {
-    let response = await axios.get("https://www.googleapis.com/blogger/v3/blogs/byurl?url=" + blogUrl, {
-        headers: {
-            'Authorization': `Bearer ${authResult.AccessToken}`
+    try {
+        let response = await axios.get("https://www.googleapis.com/blogger/v3/blogs/byurl?url=" + blogUrl, {
+            headers: {
+                'Authorization': `Bearer ${authResult.AccessToken}`
+            }
+        });
+        return response.data.id;
+    } catch (error) {
+        if(error.response.data.error.code === 404) {
+            return Promise.reject(new Error(`The blog '${blogUrl}' could not be found.`));
         }
-    });
-    return response.data.id;
+    }
+
 }
 
 const findSimilarPostsByTitle = async function (blogId, title, authResult) {
@@ -27,7 +34,9 @@ const insertPost = async function (blogId, blogPost, authResult) {
     await axios.post(`https://blogger.googleapis.com/v3/blogs/${blogId}/posts?isDraft=false`, {
         kind: "blogger#post",
         content: blogPost.Content,
-        title: blogPost.Title
+        title: blogPost.Title,
+        labels: blogPost.Tags,
+        published: blogPost.Date
     }, {
         headers: {
             'Content-Type': 'application/json',
@@ -39,6 +48,8 @@ const insertPost = async function (blogId, blogPost, authResult) {
 const updatePostContent = async function (blogId, postId, blogPost, authResult) {
     await axios.patch(`https://blogger.googleapis.com/v3/blogs/${blogId}/posts/${postId}`, {
         content: blogPost.Content,
+        labels: blogPost.Tags,
+        published: blogPost.Date
     }, {
         headers: {
             'Content-Type': 'application/json',
