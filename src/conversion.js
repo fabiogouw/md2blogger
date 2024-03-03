@@ -43,9 +43,9 @@ const conversion = function (mdFile) {
                 Date: metadata.date
             });
         }
-        return Promise.reject(new Error("No title blog provided in metadata."));
+        return Promise.reject(new Error(`No title blog provided in '${mdFile}' metadata.`));
     }
-    return Promise.reject(new Error("No blog post metadata provided in the markdown file."));
+    return Promise.reject(new Error(`No blog post metadata provided in the markdown file '${mdFile}'.`));
 }
 
 export default conversion;

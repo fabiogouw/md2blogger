@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 
-import { program } from "commander";
-
 import md2blogger from "./md2blogger.js";
+import { program } from "commander";
 
 program
     .requiredOption("--md <mdFile>", "The path of the markdown file to be converted and posted.")
