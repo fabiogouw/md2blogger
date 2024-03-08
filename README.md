@@ -17,6 +17,12 @@ You can store yout blog posts in the [markdown](https://www.markdownguide.org/) 
 
 This tool depends on [NodeJS](https://nodejs.org/en/about) to be executed. Please follow the [instructions](https://nodejs.org/en/download/) to download it and install it in your environment.
 
+After that, you can install this CLI using the following command:
+
+```bash
+npm install --save-dev md2blogger
+```
+
 ```bash
 md2blogger --url https://myblog.blogspot.com --md xxx.md
 ```
