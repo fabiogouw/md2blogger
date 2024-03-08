@@ -1,7 +1,7 @@
 {
   "name": "md2blogger",
   "version": "0.1.0",
-  "description": "",
+  "description": "md2blogger is a CLI tool that helps the maintanence of a blog hosted in Blogger",
   "main": "cli.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
