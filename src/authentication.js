@@ -40,7 +40,7 @@ const configureRouter = function (onClose, onAuthenticate) {
                 <title>Markdown to Blogger</title>
             </head>
             <body>
-            <h1>Something went wrong. Please try again.</h1>
+                <h1>Something went wrong. Please try again.</h1>
             </body>
         </html>`);
         onClose();
@@ -52,7 +52,7 @@ const configureRouter = function (onClose, onAuthenticate) {
                 <title>Markdown to Blogger</title>
             </head>
             <body>
-            <h1>Authentication completed! You can now close this window.</h1>
+                <h1>Authentication completed! You can now close this window.</h1>
             </body>
         </html>`);
         onClose();
@@ -79,7 +79,6 @@ const validateToken = async function (authResult) {
         let response = await axios.get("https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=" + authResult.AccessToken);
         return response.status === 200;
     } catch (error) {
-        console.error(error.response.data);
         return false;
     }
 }
@@ -96,7 +95,7 @@ const saveAuthenticationToLocalConfig = function (authResult) {
 }
 
 const askForBrowserAuthentication = function () {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
 
         let authResult = {
             AccessToken: null
@@ -115,11 +114,10 @@ const askForBrowserAuthentication = function () {
             let httpTerminator = createHttpTerminator({ server });
             let timeoutId = setTimeout(() => {
                 if (server.listening) {
-                    console.log("Terminating authentication process due timeout...");
                     httpTerminator.terminate();
-                    resolve(authResult);
+                    reject(new Error("The authentication process was interrupted due timeout. You'll need to grant the permissions within 2 minutes. Please try again."))
                 }
-            }, 60000);
+            }, 120000);
             app.use('/', configureRouter(() => {
                 clearTimeout(timeoutId);
                 httpTerminator.terminate();
@@ -129,7 +127,7 @@ const askForBrowserAuthentication = function () {
                 setResult(access_token);
             }));
             let redirectUri = encodeURIComponent(`http://localhost:${port}/auth/google/callback`);
-            let scopes = encodeURIComponent("https://www.googleapis.com/auth/photoslibrary https://www.googleapis.com/auth/blogger");
+            let scopes = encodeURIComponent("https://www.googleapis.com/auth/blogger");
             let url = `https://accounts.google.com/o/oauth2/v2/auth?scope=${scopes}&include_granted_scopes=true&response_type=token&redirect_uri=${redirectUri}&client_id=${GoogleCredentials.CliendId}`
             open(url);
         });

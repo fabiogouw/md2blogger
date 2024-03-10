@@ -10,7 +10,7 @@ const getBlogId = async function (blogUrl, authResult) {
         return response.data.id;
     } catch (error) {
         if(error.response.data.error.code === 404) {
-            return Promise.reject(new Error(`The blog '${blogUrl}' could not be found.`));
+            return Promise.reject(new Error(`The blog '${blogUrl}' could not be found or you don't have the permission to manage it.`));
         }
     }
 
