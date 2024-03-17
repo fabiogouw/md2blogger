@@ -24,4 +24,6 @@ const x = function(i) {
 **IMPORTANT:** This is an special note as a div with a custom class named 'caixa-destaque'
 :::
 
+![Sea](./assets/imgs/sea.jpg)
+
 End of test

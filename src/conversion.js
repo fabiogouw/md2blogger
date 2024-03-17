@@ -2,10 +2,18 @@ import markdownit from "markdown-it";
 import markdownitContainer from "markdown-it-container";
 import fs from "fs";
 import yaml from "js-yaml";
+import imageBase64Conversion from "./imageBase64Conversion.js";
 
 const metadataExtractor = /(---\n)(.+?)(---\n)/s;
 
-const conversion = function (mdFile) {
+const replaceImagesWithBase64 = function(html, images) {
+    for(let i=0; i < images.length; i++) {
+        html = html.replace(images[i].Image, images[i].Content);
+    }
+    return html;
+}
+
+const conversion = async function (mdFile) {
     if(!fs.existsSync(mdFile)) {
         return Promise.reject(new Error(`File '${mdFile}' not found.`));
     }
@@ -30,7 +38,9 @@ const conversion = function (mdFile) {
             }
         });
 
-    const mdContent = fs.readFileSync(mdFile, 'utf8');
+    let mdContent = fs.readFileSync(mdFile, 'utf8');
+    let images = await imageBase64Conversion(mdFile);
+    
     let metadataMatch = metadataExtractor.exec(mdContent);
     if(metadataMatch && metadataMatch.length === 4) {
         let metadata = yaml.load(metadataMatch[2], "utf8")
@@ -38,7 +48,7 @@ const conversion = function (mdFile) {
             let content = mdContent.replace(metadataMatch[0], "")
             return Promise.resolve({
                 Title: metadata.title,
-                Content: md.render(content),
+                Content: replaceImagesWithBase64(md.render(content), images),
                 Tags: metadata.tags ?? [],
                 Date: metadata.date
             });
